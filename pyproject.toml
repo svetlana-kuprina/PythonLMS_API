@@ -24,6 +24,7 @@ ruff = "^0.15.12"
 pyupgrade = "^3.21.2"
 djangorestframework = "^3.17.1"
 pillow = "^12.2.0"
+django-filter = "^25.2"
 
 
 [tool.poetry.group.lint.dependencies]
