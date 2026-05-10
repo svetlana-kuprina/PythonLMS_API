@@ -1,10 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from lms.models import Course, Lesson
-
 
 class CustomUser(AbstractUser):
+    """Модель пользователя"""
     email = models.EmailField(unique=True, verbose_name="email")
 
     avatar = models.ImageField(
@@ -29,13 +28,14 @@ class CustomUser(AbstractUser):
 
 
 class Payments(models.Model):
+    """Модель оплаты курсов и уроков"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name='Пользователь',
                              help_text="Выберите пользователя")
     payment_date = models.DateField(verbose_name="Дата оплаты", null=True, blank=True,
                                     help_text="Дата оплаты курса или урока")
-    paid_course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name='Оплата курса', null=True,
+    paid_course = models.ForeignKey('lms.Course', on_delete=models.CASCADE, verbose_name='Оплата курса', null=True,
                                     blank=True, related_name="paid_course")
-    paid_lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, verbose_name='Оплата урока', null=True,
+    paid_lesson = models.ForeignKey('lms.Lesson', on_delete=models.CASCADE, verbose_name='Оплата урока', null=True,
                                     blank=True, related_name="paid_lesson")
     payment_amount = models.DecimalField(max_digits=10,
                                          decimal_places=2,

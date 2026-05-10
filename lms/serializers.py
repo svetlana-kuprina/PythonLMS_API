@@ -18,7 +18,7 @@ class CourseSerializer(ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ("id", "name", "preview", "description", "count_lessons", "lessons")
+        fields = ("id", "name", "preview", "description", "count_lessons", "lessons","owner")
 
     def create(self, validated_data):
         lessons = validated_data.pop("lessons")
