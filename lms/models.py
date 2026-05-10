@@ -45,3 +45,8 @@ class Lesson(models.Model):
         verbose_name = "Урок"
         verbose_name_plural = "Урок"
         ordering = ["name"]
+
+class Subscribe(models.Model):
+    users = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Пользователь")
+    curses = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Курс")
+    subscribe = models.BooleanField()
