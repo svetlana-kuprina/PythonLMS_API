@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from django.urls import reverse
 from django.contrib.auth.models import Group
-from lms.models import Course, Lesson
+from lms.models import Course, Lesson, Subscribe
 from users.models import CustomUser
 
 
@@ -54,6 +54,7 @@ class LessonTests(APITestCase):
         url = reverse('lms:lesson-delete', args=(self.lesson.pk,))
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
 
 class LessonTestsManager(APITestCase):
     """Тест CRUD уроков c правами менеджер"""
@@ -106,3 +107,27 @@ class LessonTestsManager(APITestCase):
         url = reverse('lms:lesson-delete', args=(self.lesson.pk,))
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class SubscriptionsTestCase(APITestCase):
+
+    def setUp(self):
+        """настройки теста"""
+
+        self.user = CustomUser.objects.create(username="testuser", email="testuser@testuser.ru", password="123")
+
+        self.course = Course.objects.create(name="testcourse", description="testcourse", preview=None, owner=self.user)
+
+        self.client.force_authenticate(user=self.user)
+
+    def test_subscription(self):
+        """Тест на подписку и отписку от курса"""
+
+        url = reverse("lms:subscription", kwargs={"pk": self.course.pk})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Subscribe.objects.count(), 1)
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Subscribe.objects.count(), 0)

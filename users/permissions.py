@@ -7,6 +7,10 @@ class IsModer(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.groups.filter(name='moders').exists()
 
+class IsNotModerator(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return not request.user.groups.filter(name="Moderator").exists()
+
 
 class IsOwner(permissions.BasePermission):
     """ Проверяет, является ли пользователь владельцем."""

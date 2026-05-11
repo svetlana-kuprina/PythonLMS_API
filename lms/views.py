@@ -7,7 +7,7 @@ from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView,
 from lms.models import Course, Lesson, Subscribe
 from lms.paginators import CustomPagination
 from lms.serializers import CourseSerializer, LessonSerializer, SubscriptionsSerializer
-from users.permissions import IsModer, IsOwner
+from users.permissions import IsModer, IsOwner, IsNotModerator
 
 
 class LMSViewSet(ModelViewSet):
@@ -59,7 +59,7 @@ class LessonUpdate(UpdateAPIView):
 class LessonDelete(DestroyAPIView):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    permission_classes = (IsAuthenticated, IsOwner | ~IsModer)
+    permission_classes = (IsAuthenticated, IsNotModerator | IsOwner)
 
 
 class SubscriptionsAPIView(APIView):
