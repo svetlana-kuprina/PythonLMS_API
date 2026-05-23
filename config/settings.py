@@ -8,6 +8,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv("DEBUG") == "True" else False
@@ -29,6 +30,9 @@ INSTALLED_APPS = [
     "lms",
     'django_filters',
     'rest_framework_simplejwt',
+    'drf_yasg',
+    'drf_spectacular',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -67,8 +71,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -146,3 +152,49 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Your Project API',
+    'DESCRIPTION': 'Your project description',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
+}
+
+CACHES_ENABLED = True
+if CACHES_ENABLED:
+    CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        }
+    }
+
+# URL-адрес брокера сообщений
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # Например, Redis, который по умолчанию работает на порту 6379
+
+# URL-адрес брокера результатов, также Redis
+
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+
+# Часовой пояс для работы Celery
+
+CELERY_TIMEZONE = "Asia/Yekaterinburg"
+
+# Флаг отслеживания выполнения задач
+
+CELERY_TASK_TRACK_STARTED = True
+
+# Максимальное время на выполнение задачи
+
+CELERY_TASK_TIME_LIMIT = 30 * 60
+
+# Настройки для Celery
+CELERY_BEAT_SCHEDULE = {
+    'deactivate_users': {
+        'task': 'lms.tasks.deactivate_users',  # Путь к задаче
+        'schedule': timedelta(minutes=60),  # Расписание выполнения задачи (например, каждые 60 минут)
+    },
+}
+

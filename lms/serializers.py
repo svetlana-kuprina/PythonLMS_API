@@ -36,6 +36,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionsSerializer(serializers.ModelSerializer):
+    """Подписка на курс"""
 
     class Meta:
         model = Subscribe

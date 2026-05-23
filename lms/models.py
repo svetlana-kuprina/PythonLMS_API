@@ -48,6 +48,7 @@ class Lesson(models.Model):
 
 
 class Subscribe(models.Model):
+    """Модель подписки на курс"""
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
