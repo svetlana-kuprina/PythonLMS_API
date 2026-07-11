@@ -86,6 +86,11 @@ jobs:
           poetry install --no-interaction --no-root
 
       - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+          SECRET_KEY: test_secret_key
+          DEBUG: True
+          DATABASE_URL: sqlite:///db.sqlite3
         run:  poetry run python manage.py migrate
 
       - name: Run tests
