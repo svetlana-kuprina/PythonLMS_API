@@ -88,7 +88,7 @@ jobs:
       - name: Run migrations
         env:
           DJANGO_SETTINGS_MODULE: config.settings
-          SECRET_KEY: test_secret_key
+          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           DEBUG: True
           DATABASE_URL: sqlite:///db.sqlite3
         run:  poetry run python manage.py migrate
@@ -96,7 +96,7 @@ jobs:
       - name: Run tests
         env:
           DJANGO_SETTINGS_MODULE: config.settings
-          SECRET_KEY: test_secret_key
+          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           DEBUG: True
         run: |
           poetry run python manage.py test
