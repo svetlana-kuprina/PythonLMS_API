@@ -5,6 +5,7 @@ WORKDIR /code
 
 RUN pip install --no-cache-dir poetry
 
+
 COPY pyproject.toml poetry.lock ./
 
 #заставляет Poetry использовать текущую среду Python и устанавливает poetry

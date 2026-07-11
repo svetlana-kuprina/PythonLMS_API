@@ -134,6 +134,8 @@ STATICFILES_DIRS = [
 BASE_DIR / "static",
 
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.yandex.ru"
 EMAIL_PORT = 465
@@ -166,7 +168,7 @@ if CACHES_ENABLED:
     CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'LOCATION': 'redis://redis:6379/1',
         }
     }
 
