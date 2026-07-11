@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
