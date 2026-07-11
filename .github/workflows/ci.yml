@@ -1,6 +1,13 @@
 name: DjangoLMS_API CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - Feature/homeworke_33
+
+  pull_request:
+    branches:
+      - Feature/homeworke_33
 
 jobs:
   lint:
