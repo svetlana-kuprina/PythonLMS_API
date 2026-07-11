@@ -86,7 +86,7 @@ jobs:
           poetry install --no-interaction --no-root
 
       - name: Run migrations
-        run: python manage.py migrate
+        run:  poetry run python manage.py migrate
 
       - name: Run tests
         env:
