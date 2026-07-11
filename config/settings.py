@@ -88,9 +88,11 @@ if 'test' in sys.argv:
         }
     }
 IS_CI = os.getenv("CI", "false") == "true"
+IS_TESTING = 'test' in sys.argv
 
-if IS_CI:
-    # Для CI используем SQLite
+if IS_CI or IS_TESTING:
+    # Для CI и тестов используем SQLite
+    print("🔹 Using SQLite database for tests/CI")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -193,15 +195,23 @@ if CACHES_ENABLED:
         }
     }
 
-# URL-адрес брокера сообщений
+# Celery Configuration
+if IS_CI or IS_TESTING:
+    # Для CI и тестов используем in-memory брокер
+    CELERY_BROKER_URL = 'memory://localhost/'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+    CELERY_TASK_ALWAYS_EAGER = True  # Задачи выполняются синхронно
+    CELERY_TASK_EAGER_PROPAGATES = True  # Пробрасывать исключения
+else:
+    # URL-адрес брокера сообщений
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # Например, Redis, который по умолчанию работает на порту 6379
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # Например, Redis, который по умолчанию работает на порту 6379
 
-# URL-адрес брокера результатов, также Redis
+    # URL-адрес брокера результатов, также Redis
 
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 
-# Часовой пояс для работы Celery
+    # Часовой пояс для работы Celery
 
 CELERY_TIMEZONE = "Asia/Yekaterinburg"
 
