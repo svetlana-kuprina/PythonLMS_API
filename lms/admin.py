@@ -8,6 +8,7 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = ("id", "name")
     list_filter = ("name",)
 
+
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
     list_display = ("id", "name")

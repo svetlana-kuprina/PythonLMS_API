@@ -11,6 +11,7 @@ from users.services import convert_rub_to_dollars, create_stripe_product, create
 
 class PaymentsAPIView(ModelViewSet):
     """Фильтрация и сортировка"""
+
     queryset = Payments.objects.all()
     serializer_class = PaymentsSerializer
     filter_backends = (DjangoFilterBackend, OrderingFilter)
@@ -20,6 +21,7 @@ class PaymentsAPIView(ModelViewSet):
 
 class UserCreateAPIView(CreateAPIView):
     """Регистрация пользователя"""
+
     serializer_class = UserSerializer
     queryset = CustomUser.objects.all()
     permission_classes = (AllowAny,)
@@ -29,11 +31,12 @@ class UserCreateAPIView(CreateAPIView):
         user.set_password(user.password)
         user.save()
 
+
 class PaymentsCreateAPIView(CreateAPIView):
     """Регистрация пользователя"""
+
     serializer_class = PaymentsSerializer
     queryset = Payments.objects.all()
-
 
     def perform_create(self, serializer):
         payment = serializer.save(user=self.request.user)

@@ -10,8 +10,7 @@ class LessonSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = '__all__'
-
+        fields = "__all__"
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -23,14 +22,14 @@ class CourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ("id", "name", "preview", "description", "count_lessons", "lessons","owner")
+        fields = ("id", "name", "preview", "description", "count_lessons", "lessons", "owner")
 
     def create(self, validated_data):
         lessons = validated_data.pop("lessons")
 
         course_item = Course.objects.create(**validated_data)
         for lesson in lessons:
-            Lesson.objects.create(**lesson, lesson = course_item)
+            Lesson.objects.create(**lesson, lesson=course_item)
 
         return course_item
 
@@ -40,4 +39,4 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscribe
-        fields = '__all__'
+        fields = "__all__"
