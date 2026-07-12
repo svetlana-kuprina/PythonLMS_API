@@ -115,8 +115,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name:
-        run: # Создаем .env файл (если его нет)
+      - name: Create .env file
+        run: |
           cat > .env << 'EOL'
           SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
           DEBUG=True
