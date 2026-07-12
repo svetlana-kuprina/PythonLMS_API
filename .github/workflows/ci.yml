@@ -119,10 +119,10 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }} .
+        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web:${{ github.sha }} .
 
       - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
+        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -137,8 +137,8 @@ jobs:
       - name: Deploy to Server
         run: |
                 ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-                  docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
-                  docker stop lms_api || true
-                  docker rm lms_api || true
-                  docker run -d --name lms_api -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/PythonLMS_API:${{ github.sha }}
+                  docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web:${{ github.sha }}
+                  docker stop pythonlms_api-web || true
+                  docker rm pythonlms_api-web || true
+                  docker run -d --name pythonlms_api-web -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web:${{ github.sha }}
                 EOF
