@@ -110,39 +110,139 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: test
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Build with Docker Compose
-        run: |
-          # Задать тег образа через переменную окружения
-          export IMAGE_TAG=${{ github.sha }}
-          docker compose build
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Tag and push image
+      - name: Build all services with Docker Compose
         run: |
-          docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:latest ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
-      - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
+          # Собрать все образы с тегом SHA
+          docker compose -f docker-compose.yml build
 
+      - name: Tag and push all services
+        run: |
+          # Тегируем и пушим каждый сервис
+          services=("web" "nginx" "celery" "celery-beat")
+          for service in "${services[@]}"; do
+            # Тегируем образ с SHA
+            docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_${service}:latest ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_${service}:${{ github.sha }}
+            # Пушим оба тега
+            docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_${service}:${{ github.sha }}
+            docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_${service}:latest
+          done
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
     steps:
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
-            ssh-private-key: ${{ secrets.SSH_KEY }}
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
       - name: Deploy to Server
         run: |
-                ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-                  docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
-                  docker stop lms_api || true
-                  docker rm lms_api || true
-                  docker run -d --name lms_api -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api:${{ github.sha }}
-                EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            # Создаем директорию для проекта если её нет
+            mkdir -p /opt/lms_api
+            cd /opt/lms_api
+
+            # Создаем docker-compose.yml на сервере
+            cat > docker-compose.yml << 'EOL'
+            services:
+              web:
+                image: ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_web:${{ github.sha }}
+                command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+                env_file:
+                  - .env
+                environment:
+                  - DEBUG=False
+                  - DATABASE_HOST=db
+                volumes:
+                  - static_volume:/code/static
+                ports:
+                  - "8000:8000"
+                depends_on:
+                  db:
+                    condition: service_healthy
+                  redis:
+                    condition: service_healthy
+                restart: unless-stopped
+
+              nginx:
+                image: ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_nginx:${{ github.sha }}
+                ports:
+                  - "80:80"
+                volumes:
+                  - static_volume:/code/staticfiles
+                depends_on:
+                  web:
+                    condition: service_started
+                restart: unless-stopped
+
+              db:
+                image: postgres:17
+                env_file:
+                  - .env
+                expose:
+                  - "5432"
+                volumes:
+                  - postgres_data:/var/lib/postgresql/data
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 5
+
+              redis:
+                image: redis:7-alpine
+                expose:
+                  - "6379"
+                volumes:
+                  - redis_data:/data
+                healthcheck:
+                  test: ["CMD", "redis-cli", "ping"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+
+              celery:
+                image: ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_celery:${{ github.sha }}
+                command: celery -A config worker --loglevel=info
+                env_file:
+                  - .env
+                environment:
+                  - DB_HOST=db
+                depends_on:
+                  db:
+                    condition: service_healthy
+                  redis:
+                    condition: service_healthy
+                restart: unless-stopped
+
+              celery-beat:
+                image: ${{ secrets.DOCKER_HUB_USERNAME }}/lms_api_celery-beat:${{ github.sha }}
+                command: celery -A config beat --loglevel=info
+                env_file:
+                  - .env
+                environment:
+                  - DB_HOST=db
+                depends_on:
+                  db:
+                    condition: service_healthy
+                  redis:
+                    condition: service_healthy
+                  celery:
+                    condition: service_started
+                restart: unless-stopped
+
+            volumes:
+              postgres_data:
+              static_volume:
+              redis_data:
+            EOL
