@@ -154,7 +154,7 @@ jobs:
                   docker stop pythonlms_api-web-1 || true
                   docker stop pythonlms_api-nginx-1 || true
                   docker rm pythonlms_api-web-1 || true
-                  docker run -d --name pythonlms_api-web-1 -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
+                  docker run -d --name pythonlms_api-web-1 -p 8000:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
                   docker start pythonlms_api-web-1 || true
                   docker start pythonlms_api-nginx-1 || true
                 EOF
