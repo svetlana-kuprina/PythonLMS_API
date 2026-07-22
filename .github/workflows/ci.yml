@@ -120,9 +120,9 @@ jobs:
         run: |
           echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
           echo "DEBUG=True" >> .env
-          echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
           echo "DATABASE_USER=postgres" >> .env
           echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "POSTGRES_DB=LMS_DBASE" >> .env
           echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
           echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
           echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
@@ -162,20 +162,20 @@ jobs:
           
                 echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
                 echo "DEBUG=True" >> .env
-                echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
                 echo "DATABASE_USER=postgres" >> .env
                 echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+                echo "POSTGRES_DB=LMS_DBASE" >> .env
                 echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
                 echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
                 echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-                
+  
                 docker volume create static_volume || true
                 
                 # Скачиваем новый образ
                 docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
                 
-                # Останавливаем текущие контейнеры
-                docker compose down
+               # Останавливаем и полностью удаляем контейнеры и сеть (сохраняем volumes)
+                docker compose down --remove-orphans
                 
                 # Запускаем с новым образом
                 export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
