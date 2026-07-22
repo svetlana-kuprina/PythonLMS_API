@@ -1,8 +1,7 @@
 services:
   web:
     build: .
-    image: ${DOCKER_HUB_USERNAME}/pythonlms_api-web-1:latest
-    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: bash -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
     environment:
@@ -21,23 +20,29 @@ services:
     restart: unless-stopped #перезапуск в случае сбоя
 
   nginx:
+
     build:
       context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - static_volume:/code/staticfiles
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./staticfiles:/usr/share/nginx/html/staticfiles:ro
+      - ./media:/usr/share/nginx/html/media:ro
     depends_on:
       web:
         condition: service_started
     restart: unless-stopped #перезапуск в случае сбоя
 
-
   db:
     image: postgres:17
     env_file:
       - .env
+    environment: #необходимость
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
     expose:
       - "5432" # для работы с базой
     volumes:

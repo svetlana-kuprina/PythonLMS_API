@@ -108,41 +108,10 @@ jobs:
         run: |
           poetry run python manage.py test
 
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: |
-          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-          echo "DEBUG=True" >> .env
-          echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
-          echo "DATABASE_USER=postgres" >> .env
-          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
-          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
-          echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-
-      - name: Log in to Docker Hub
-        run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
-
-      - name: Build Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }} .
-          docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }} ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
-          
-      - name: Push Docker image to Docker Hub
-        run: |
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
 
     steps:
       - name: Set up SSH
@@ -150,29 +119,75 @@ jobs:
         with:
             ssh-private-key: ${{ secrets.SSH_KEY }}
 
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Загружаем всю историю
+          ref: Feature/homeworke_33       # Явно указываем ветку
+
+      - name: Copy project files to server
+        run: |
+          rsync -avzIci --rsync-path="sudo rsync" \
+          --delete \
+          --exclude '__pycache__' \
+          --exclude='.env' \
+          --exclude='venv' \
+          --exclude='*.pyc' \
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='media' \
+          --exclude='staticfiles' \
+          --chown=${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} \
+          ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_DIR }}
+
       - name: Deploy to Server
         run: |
-            ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
-              # Создаем .env файл
-              echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-              echo "DEBUG=True" >> .env
-              echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
-              echo "DATABASE_USER=postgres" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-              echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
-              echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
-              echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-
-      - name: Pull Docker image
-        run: |
-              # Скачиваем новый образ
-              docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
+              ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
+                cd ${{ secrets.DEPLOY_DIR }}
+          
+                rm .env
+          
+                # Создаем .env файл
+          
+                echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+                echo "DEBUG=True" >> .env
+                echo "DATABASE_NAME=LMS_DBASE" >> .env
+                echo "DATABASE_USER=postgres" >> .env
+                echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+                echo "POSTGRES_DB=LMS_DBASE" >> .env
+                echo "DATABASE_HOST=localhost" >> .env
+                echo "DATABASE_PORT=5432" >> .env
+                echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+                echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+                echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+                echo "CELERY_BROKER_URL=redis://redis:6379" >> .env
+                echo "CELERY_RESULT_BACKEND=redis://redis:6379" >> .env
+          
+                # Загружаем переменные из .env в окружение
+                set -a
+                source .env
+                set +a
+                
+                #Копирование статики
+                mkdir -p staticfiles
+                cp -r staticfiles/* ${{ secrets.DEPLOY_DIR }}/staticfiles/ 2>/dev/null || true
+                python manage.py collectstatic --noinput
+                # Копируем статику в место для nginx
+                sudo mkdir -p /usr/share/nginx/html/static
+                sudo cp -r staticfiles/* /usr/share/nginx/html/static/ 2>/dev/null || true
+                sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /usr/share/nginx/html/static
             
-              # Останавливаем текущие контейнеры
-              docker compose down
-            
-              # Запускаем с новым образом
-              export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
-              export IMAGE_TAG=${{ github.sha }}
-              docker compose up -d
-            EOFSSH
+          
+                # Останавливаем и полностью удаляем контейнеры и сеть (сохраняем volumes)
+                docker compose down --remove-orphans
+                
+                # Запускаем с новым образом
+                docker compose up -d
+                
+          
+              EOFSSH
