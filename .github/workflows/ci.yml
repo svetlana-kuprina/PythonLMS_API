@@ -132,11 +132,14 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }} .
-
+        run: |
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }} .
+          docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }} ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
+          
       - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
-
+        run: |
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -162,15 +165,14 @@ jobs:
                 STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
                 EOL
                 
-                # Обновляем образ из Docker
-                docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
+               # Экспортируем переменные для docker-compose
+                export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+                export IMAGE_TAG=${{ github.sha }}
                 
-                # Останавливаем и удаляем текущие контейнеры
+              # Скачиваем новые образы
+                docker pull ${DOCKER_HUB_USERNAME}/pythonlms_api-web-1:${IMAGE_TAG}
+              
+              # Перезапускаем контейнеры
                 docker-compose down
-                
-                # Обновляем тег образа в docker-compose.yml или используем переменную
-                sed -i "s|image:.*pythonlms_api-web.*|image: ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}|g" docker-compose.yml
-                
-                # Запускаем все заново
                 docker-compose up -d
               EOF
