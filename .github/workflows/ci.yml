@@ -153,7 +153,12 @@ jobs:
       - name: Deploy to Server
         run: |
               ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
+                echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+                cd ${{ secrets.DEPLOY_DIR }}
+          
                 # Создаем .env файл
+          
                 echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
                 echo "DEBUG=True" >> .env
                 echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
@@ -162,6 +167,8 @@ jobs:
                 echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
                 echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
                 echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+                
+                docker volume create static_volume || true
                 
                 # Скачиваем новый образ
                 docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
@@ -173,4 +180,7 @@ jobs:
                 export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
                 export IMAGE_TAG=${{ github.sha }}
                 docker compose up -d
+          
+                
+          
               EOFSSH
