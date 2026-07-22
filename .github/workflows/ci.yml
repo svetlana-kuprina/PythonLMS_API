@@ -118,16 +118,14 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat > .env << 'EOL'
-          SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
-          DEBUG=True
-          POSTGRES_USER=postgres
-          POSTGRES_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
-          POSTGRES_DB=LMS_DBASE
-          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
-          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
-          STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
-          EOL
+          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+          echo "DEBUG=True" >> .env
+          echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
+          echo "DATABASE_USER=postgres" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+          echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
 
       - name: Log in to Docker Hub
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
@@ -156,16 +154,14 @@ jobs:
         run: |
             ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
               # Создаем .env файл
-              cat > .env << 'EOL'
-              SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
-              DEBUG=False
-              POSTGRES_USER=postgres
-              POSTGRES_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
-              POSTGRES_DB=LMS_DBASE
-              EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
-              EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
-              STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
-              EOL
+              echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+              echo "DEBUG=True" >> .env
+              echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
+              echo "DATABASE_USER=postgres" >> .env
+              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+              echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+              echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+              echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
             
               # Скачиваем новый образ
               docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
