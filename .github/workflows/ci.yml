@@ -152,27 +152,25 @@ jobs:
 
       - name: Deploy to Server
         run: |
-            ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
-              # Создаем .env файл
-              echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-              echo "DEBUG=True" >> .env
-              echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
-              echo "DATABASE_USER=postgres" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-              echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
-              echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
-              echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-
-      - name: Pull Docker image
-        run: |
-              # Скачиваем новый образ
-              docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
-            
-              # Останавливаем текущие контейнеры
-              docker compose down
-            
-              # Запускаем с новым образом
-              export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
-              export IMAGE_TAG=${{ github.sha }}
-              docker compose up -d
-            EOFSSH
+              ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
+                # Создаем .env файл
+                echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+                echo "DEBUG=True" >> .env
+                echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
+                echo "DATABASE_USER=postgres" >> .env
+                echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+                echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+                echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+                echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+                
+                # Скачиваем новый образ
+                docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
+                
+                # Останавливаем текущие контейнеры
+                docker compose down
+                
+                # Запускаем с новым образом
+                export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+                export IMAGE_TAG=${{ github.sha }}
+                docker compose up -d
+              EOFSSH
