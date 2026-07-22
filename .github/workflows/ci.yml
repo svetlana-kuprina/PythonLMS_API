@@ -152,27 +152,27 @@ jobs:
 
       - name: Deploy to Server
         run: |
-                ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-                            # Обновляем .env файл на сервере
-                cat > .env << 'EOL'
-                SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
-                DEBUG=False
-                POSTGRES_USER=postgres
-                POSTGRES_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
-                POSTGRES_DB=LMS_DBASE
-                EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
-                EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
-                STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
-                EOL
-                
-               # Экспортируем переменные для docker-compose
-                export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
-                export IMAGE_TAG=${{ github.sha }}
-                
-              # Скачиваем новые образы
-                docker pull ${DOCKER_HUB_USERNAME}/pythonlms_api-web-1:${IMAGE_TAG}
-              
-              # Перезапускаем контейнеры
-                docker-compose down
-                docker-compose up -d
-              EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} '
+            # Создаем .env файл
+            cat > .env << "EOL"
+            SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            DEBUG=False
+            POSTGRES_USER=postgres
+            POSTGRES_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            POSTGRES_DB=LMS_DBASE
+            EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+            EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+            STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+            EOL
+          
+            # Скачиваем новый образ
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
+          
+            # Останавливаем текущие контейнеры
+            docker-compose down
+          
+            # Запускаем с новым образом (используем переменные окружения)
+            export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+            export IMAGE_TAG=${{ github.sha }}
+            docker-compose up -d
+          '
