@@ -157,6 +157,7 @@ jobs:
 
                 cd ${{ secrets.DEPLOY_DIR }}
           
+          
                 # Создаем .env файл
           
                 echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
