@@ -33,6 +33,7 @@ services:
         condition: service_started
     restart: unless-stopped #перезапуск в случае сбоя
 
+
   db:
     image: postgres:17
     env_file:
