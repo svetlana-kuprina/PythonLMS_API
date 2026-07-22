@@ -33,12 +33,11 @@ services:
         condition: service_started
     restart: unless-stopped #перезапуск в случае сбоя
 
-
   db:
     image: postgres:17
     env_file:
       - .env
-    environment:
+    environment: #необходимость
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
