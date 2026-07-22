@@ -162,7 +162,9 @@ jobs:
               echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
               echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
               echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-            
+
+      - name: Pull Docker image
+        run: |
               # Скачиваем новый образ
               docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:latest
             
