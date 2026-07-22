@@ -150,6 +150,33 @@ jobs:
         with:
             ssh-private-key: ${{ secrets.SSH_KEY }}
 
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Загружаем всю историю
+          ref: main       # Явно указываем ветку
+
+      - name: Copy project files to server
+        run: |
+          rsync -avzu --rsync-path="sudo rsync" \
+          --delete \
+          --exclude '__pycache__' \
+          --exclude='.env' \
+          --exclude='venv' \
+          --exclude='*.pyc' \
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='media' \
+          --exclude='staticfiles' \
+          --exclude='*.py' \
+          --chown=${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} \
+          ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_DIR }}
+
       - name: Deploy to Server
         run: |
               ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
@@ -157,6 +184,7 @@ jobs:
 
                 cd ${{ secrets.DEPLOY_DIR }}
           
+                rm .env
           
                 # Создаем .env файл
           
