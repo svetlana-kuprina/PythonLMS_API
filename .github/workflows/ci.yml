@@ -150,11 +150,27 @@ jobs:
       - name: Deploy to Server
         run: |
                 ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-                  docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
-                  docker stop pythonlms_api-web-1 || true
-                  docker stop pythonlms_api-nginx-1 || true
-                  docker rm pythonlms_api-web-1 || true
-                  docker run -d --name pythonlms_api-web-1 -p 8000:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
-                  docker start pythonlms_api-web-1 || true
-                  docker start pythonlms_api-nginx-1 || true
-                EOF
+                            # Обновляем .env файл на сервере
+                cat > .env << 'EOL'
+                SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+                DEBUG=False
+                POSTGRES_USER=postgres
+                POSTGRES_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+                POSTGRES_DB=LMS_DBASE
+                EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+                EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+                STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+                EOL
+                
+                # Обновляем образ из Docker
+                docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}
+                
+                # Останавливаем и удаляем текущие контейнеры
+                docker-compose down
+                
+                # Обновляем тег образа в docker-compose.yml или используем переменную
+                sed -i "s|image:.*pythonlms_api-web.*|image: ${{ secrets.DOCKER_HUB_USERNAME }}/pythonlms_api-web-1:${{ github.sha }}|g" docker-compose.yml
+                
+                # Запускаем все заново
+                docker-compose up -d
+              EOF
