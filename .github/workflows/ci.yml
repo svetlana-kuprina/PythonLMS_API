@@ -172,7 +172,12 @@ jobs:
                 set -a
                 source .env
                 set +a
-  
+                
+                #Копирование статики
+                mkdir -p staticfiles
+                cp -r staticfiles/* ${{ secrets.DEPLOY_DIR }}/staticfiles/ 2>/dev/null || true
+                python manage.py collectstatic --noinput
+          
                 # Останавливаем и полностью удаляем контейнеры и сеть (сохраняем volumes)
                 docker compose down --remove-orphans
                 
