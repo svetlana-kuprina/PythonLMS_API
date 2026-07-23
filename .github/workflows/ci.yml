@@ -177,6 +177,11 @@ jobs:
                 mkdir -p staticfiles
                 cp -r staticfiles/* ${{ secrets.DEPLOY_DIR }}/staticfiles/ 2>/dev/null || true
                 python manage.py collectstatic --noinput
+                # Копируем статику в место для nginx
+                sudo mkdir -p /usr/share/nginx/html/static
+                sudo cp -r staticfiles/* /usr/share/nginx/html/static/ 2>/dev/null || true
+                sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /usr/share/nginx/html/static
+            
           
                 # Останавливаем и полностью удаляем контейнеры и сеть (сохраняем volumes)
                 docker compose down --remove-orphans
