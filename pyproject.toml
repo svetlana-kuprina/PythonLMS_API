@@ -41,6 +41,7 @@ django-cors-headers = "^4.9.0"
 psycopg2-binary = "^2.9.12"
 celery-types = "^0.26.0"
 quicorn = "^0.0.0"
+gunicorn = "^26.0.0"
 
 
 [tool.poetry.group.lint.dependencies]
