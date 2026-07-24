@@ -1,17 +1,20 @@
 services:
   web:
     build: .
-    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     env_file:
       - .env
     environment:
-      - DEBUG=True
+      - DEBUG=False
       - DATABASE_HOST=db
     volumes:
       - .:/code
       - static_volume:/code/static
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000" # Только внутри сети
     depends_on:
       db:
         condition: service_healthy
@@ -20,25 +23,31 @@ services:
     restart: unless-stopped #перезапуск в случае сбоя
 
   nginx:
+
     build:
       context: ./nginx
+      dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "80:80" #Смотрит наружу
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - static_volume:/code/staticfiles
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./staticfiles:/usr/share/nginx/html/staticfiles:ro
+      - ./media:/usr/share/nginx/html/media:ro
     depends_on:
       web:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped #перезапуск в случае сбоя
 
-
   db:
-    image: postgres:17
+    image: postgres:17 #лучше версия alpine
     env_file:
-      - .env
+      - .env #лучше не делать так как базе не нужен весь env файл
+    environment: #необходимость
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
     expose:
-      - "5432" # для работы с базой
+      - "5432" # для работы с базой внутри сети
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

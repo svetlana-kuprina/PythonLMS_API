@@ -1,2 +1,194 @@
+name: DjangoLMS_API CI
+
 on:
+  push:
+    branches:
+      - Feature/homeworke_33
+
+  pull_request:
+    branches:
+      - develop
+
 jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+            venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-root
+
+      - name: Create .env file
+        run: |
+          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+          echo "DEBUG=True" >> .env
+          echo "DATABASE_URL=sqlite:///db.sqlite3" >> .env
+          echo "DATABASE_USER=postgres" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+          echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+          
+
+      - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+        run:  poetry run python manage.py migrate
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+        run: |
+          poetry run python manage.py test
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+            venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-root
+
+      - name: Run linters
+        run: |
+          poetry run flake8 lms
+          poetry run flake8 users
+          
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+            ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Загружаем всю историю
+          ref: Feature/homeworke_33       # Явно указываем ветку
+
+      - name: Copy project files to server
+        run: |
+          rsync -avzIci --rsync-path="sudo rsync" \
+          --delete \
+          --exclude '__pycache__' \
+          --exclude='.env' \
+          --exclude='venv' \
+          --exclude='*.pyc' \
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='media' \
+          --exclude='staticfiles' \
+          --chown=${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} \
+          ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_DIR }}
+
+      - name: Deploy to Server
+        run: |
+              ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOFSSH'
+                cd ${{ secrets.DEPLOY_DIR }}
+          
+                rm .env
+          
+                # Создаем .env файл
+          
+                echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+                echo "DEBUG=False" >> .env
+                echo "DATABASE_NAME=LMS_DBASE" >> .env
+                echo "DATABASE_USER=postgres" >> .env
+                echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+                echo "POSTGRES_DB=LMS_DBASE" >> .env
+                echo "DATABASE_HOST=localhost" >> .env
+                echo "DATABASE_PORT=5432" >> .env
+                echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+                echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+                echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+                echo "CELERY_BROKER_URL=redis://redis:6379" >> .env
+                echo "CELERY_RESULT_BACKEND=redis://redis:6379" >> .env
+          
+                # Загружаем переменные из .env в окружение
+                set -a
+                source .env
+                set +a
+                
+                
+                
+                #Копирование статики не обязательно так. Можно в compose сделать отдельный контейнер со сбором статики 
+                mkdir -p staticfiles
+                cp -r staticfiles/* ${{ secrets.DEPLOY_DIR }}/staticfiles/ 2>/dev/null || true
+                python manage.py collectstatic --noinput
+                # Копируем статику в место для nginx
+                sudo mkdir -p /usr/share/nginx/html/static
+                sudo cp -r staticfiles/* /usr/share/nginx/html/static/ 2>/dev/null || true
+                sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /usr/share/nginx/html/static
+            
+          
+                # Останавливаем и полностью удаляем контейнеры и сеть (сохраняем volumes)
+                docker compose down --remove-orphans
+                
+                # Запускаем с новым образом
+                docker compose up -d --build
+          
+              EOFSSH
