@@ -173,9 +173,9 @@ jobs:
                 source .env
                 set +a
                 
-                gunicorn PythonLMS_API.wsgi:application
                 
-                #Копирование статики
+                
+                #Копирование статики не обязательно так. Можно в compose сделать отдельный контейнер со сбором статики 
                 mkdir -p staticfiles
                 cp -r staticfiles/* ${{ secrets.DEPLOY_DIR }}/staticfiles/ 2>/dev/null || true
                 python manage.py collectstatic --noinput
@@ -189,7 +189,6 @@ jobs:
                 docker compose down --remove-orphans
                 
                 # Запускаем с новым образом
-                docker compose up -d
-                
+                docker compose up -d --build
           
               EOFSSH

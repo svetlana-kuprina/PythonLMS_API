@@ -8,12 +8,11 @@ RUN pip install --no-cache-dir poetry
 
 COPY pyproject.toml poetry.lock ./
 
-#заставляет Poetry использовать текущую среду Python и устанавливает poetry
+#заставляет Poetry использовать текущую среду Python и устанавливает poetry. Можно указать --only main что бы он не устанавливал литеры зависимости flake8...
+
 RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi --no-root
 
 COPY . .
-
-RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
