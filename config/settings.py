@@ -1,3 +1,4 @@
+import sys
 from datetime import timedelta
 from pathlib import Path
 import os
@@ -7,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -78,17 +79,39 @@ REST_FRAMEWORK = {
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": os.getenv("DATABASE_NAME"),
-        "USER": os.getenv("DATABASE_USER"),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD"),
-        "HOST": os.getenv("DATABASE_HOST"),
-        "PORT": os.getenv("DATABASE_PORT", default="5432"),
+# Настройки легкой базы для тестирования
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
     }
-}
+IS_CI = os.getenv("CI", "false") == "true"
+IS_TESTING = 'test' in sys.argv
+
+if IS_CI or IS_TESTING:
+    # Для CI и тестов используем SQLite
+    print("🔹 Using SQLite database for tests/CI")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    # Для локальной разработки и продакшена используем PostgreSQL
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "NAME": os.getenv("DATABASE_NAME"),
+            "USER": os.getenv("DATABASE_USER"),
+            "PASSWORD": os.getenv("DATABASE_PASSWORD"),
+            "HOST": os.getenv("DATABASE_HOST"),
+            "PORT": os.getenv("DATABASE_PORT", default="5432"),
+        }
+    }
+
 
 
 # Password validation
@@ -134,6 +157,8 @@ STATICFILES_DIRS = [
 BASE_DIR / "static",
 
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') #куда отдаем статику
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.yandex.ru"
 EMAIL_PORT = 465
@@ -166,19 +191,27 @@ if CACHES_ENABLED:
     CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'LOCATION': 'redis://redis:6379/1',
         }
     }
 
-# URL-адрес брокера сообщений
+# Celery Configuration
+if IS_CI or IS_TESTING:
+    # Для CI и тестов используем in-memory брокер
+    CELERY_BROKER_URL = 'memory://localhost/'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+    CELERY_TASK_ALWAYS_EAGER = True  # Задачи выполняются синхронно
+    CELERY_TASK_EAGER_PROPAGATES = True  # Пробрасывать исключения
+else:
+    # URL-адрес брокера сообщений
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # Например, Redis, который по умолчанию работает на порту 6379
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # Например, Redis, который по умолчанию работает на порту 6379
 
-# URL-адрес брокера результатов, также Redis
+    # URL-адрес брокера результатов, также Redis
 
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 
-# Часовой пояс для работы Celery
+    # Часовой пояс для работы Celery
 
 CELERY_TIMEZONE = "Asia/Yekaterinburg"
 
@@ -197,4 +230,3 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': timedelta(minutes=60),  # Расписание выполнения задачи (например, каждые 60 минут)
     },
 }
-
